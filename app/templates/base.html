@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}CampusEvent 校园活动报名{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap bar">
+    <a class="brand" href="{{ url_for('index') }}">CampusEvent<small>校园活动报名与管理系统</small></a>
+    <nav class="nav">
+      <a href="{{ url_for('index') }}" class="{{ 'on' if request.endpoint == 'index' }}">活动列表</a>
+      <a href="{{ url_for('me') }}" class="{{ 'on' if request.endpoint == 'me' }}">我的报名</a>
+      <a href="{{ url_for('admin_activities') }}" class="{{ 'on' if request.endpoint == 'admin_activities' }}">活动管理</a>
+      <a href="{{ url_for('admin_approvals') }}" class="{{ 'on' if request.endpoint == 'admin_approvals' }}">审批台</a>
+    </nav>
+    <form class="who" method="get" action="{{ url_for('switch_student', student_id='__ID__') }}" onsubmit="return false;">
+      <label for="switcher">演示账号</label>
+      <select id="switcher" onchange="location.href='{{ url_for('switch_student', student_id='__ID__') }}'.replace('__ID__', this.value)">
+        {% for s in students %}
+        <option value="{{ s.student_id }}" {{ 'selected' if s.student_id == current_student_id }}>{{ s.name }}（{{ s.student_id }}）</option>
+        {% endfor %}
+      </select>
+    </form>
+  </div>
+</header>
+
+<div class="wrap">
+  {% with msgs = get_flashed_messages(with_categories=true) %}
+    {% if msgs %}
+      <div class="flash-stack">
+        {% for cat, text in msgs %}
+        <div class="flash {{ cat }}">{{ text }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</div>
+
+<footer class="foot">
+  <div class="wrap">CampusEvent · 软件工程实验二 · 初始版本 baseline-v1</div>
+</footer>
+</body>
+</html>

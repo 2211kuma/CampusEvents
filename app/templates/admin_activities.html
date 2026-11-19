@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}活动管理 · CampusEvent{% endblock %}
+{% block content %}
+<section class="page-head">
+  <h1>活动管理</h1>
+  <span class="muted">管理员维护活动；已有有效报名的活动不允许删除</span>
+</section>
+
+<section class="block">
+  <h2>新建活动</h2>
+  <form class="form-grid" method="post" action="{{ url_for('admin_create_activity') }}">
+    <label>活动名称<input name="title" required placeholder="如：程序设计竞赛校内选拔"></label>
+    <label>类别<input name="category" placeholder="竞赛 / 体育 / 讲座"></label>
+    <label>开始时间<input type="datetime-local" name="start_at" required></label>
+    <label>地点<input name="location" placeholder="信息楼 A301"></label>
+    <label>人数上限<input type="number" name="capacity" min="1" value="30" required></label>
+    <label>报名方式
+      <select name="policy_type">
+        <option value="DIRECT">直接报名（名额充足即通过）</option>
+        <option value="AUDIT">需管理员审核</option>
+      </select>
+    </label>
+    <button class="btn primary" type="submit">创建活动</button>
+  </form>
+</section>
+
+<section class="block">
+  <h2>活动列表</h2>
+  <table class="table">
+    <thead>
+      <tr><th>活动</th><th>时间</th><th>地点</th><th>报名方式</th><th>已通过/上限</th><th>待审核</th><th>调整上限</th><th>删除</th></tr>
+    </thead>
+    <tbody>
+      {% for activity, stats in rows %}
+      <tr>
+        <td><a href="{{ url_for('activity_detail', activity_id=activity.activity_id) }}">{{ activity.title }}</a></td>
+        <td>{{ activity.start_at|dt }}</td>
+        <td>{{ activity.location }}</td>
+        <td>{{ policy_labels[activity.policy_type.value] }}</td>
+        <td>{{ stats.approval }} / {{ stats.capacity }}</td>
+        <td>{{ stats.pending }}</td>
+        <td>
+          <form class="inline" method="post" action="{{ url_for('admin_update_capacity', activity_id=activity.activity_id) }}">
+            <input type="number" name="capacity" min="1" value="{{ stats.capacity }}">
+            <button class="btn tiny" type="submit">保存</button>
+          </form>
+        </td>
+        <td>
+          <form method="post" action="{{ url_for('admin_delete_activity', activity_id=activity.activity_id) }}">
+            <button class="btn tiny danger" type="submit">删除</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

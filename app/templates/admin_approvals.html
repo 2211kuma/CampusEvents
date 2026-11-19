@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}审批台 · CampusEvent{% endblock %}
+{% block content %}
+<section class="page-head">
+  <h1>审批台</h1>
+  <span class="muted">批准时会再次校验剩余名额；名额已满则批准失败，不超出人数上限</span>
+</section>
+
+{% if rows %}
+  {% for activity, stats, pending in rows %}
+  <section class="block">
+    <div class="block-head">
+      <h2>{{ activity.title }}</h2>
+      <span class="muted">已通过 {{ stats.approval }} / {{ stats.capacity }}，剩余 {{ stats.remaining }}，待审核 {{ pending|length }}</span>
+    </div>
+    <table class="table">
+      <thead><tr><th>记录号</th><th>学生</th><th>提交时间</th><th>操作</th></tr></thead>
+      <tbody>
+        {% for r in pending %}
+        <tr>
+          <td>#{{ r.registration_id }}</td>
+          <td>{{ student_map.get(r.student_id, r.student_id) }}</td>
+          <td>{{ r.created_at|dt }}</td>
+          <td class="actions">
+            <form method="post" action="{{ url_for('admin_decide', registration_id=r.registration_id, decision='approve') }}">
+              <button class="btn tiny primary" type="submit">批准</button>
+            </form>
+            <form method="post" action="{{ url_for('admin_decide', registration_id=r.registration_id, decision='reject') }}">
+              <button class="btn tiny danger" type="submit">拒绝</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+  {% endfor %}
+{% else %}
+  <p class="empty">当前没有待审核的报名。</p>
+{% endif %}
+{% endblock %}

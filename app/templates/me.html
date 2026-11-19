@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}我的报名 · CampusEvent{% endblock %}
+{% block content %}
+<section class="page-head">
+  <h1>我的报名与站内消息</h1>
+  <span class="who-line">{{ current_student.name }}（{{ current_student.student_id }}）</span>
+</section>
+
+<div class="two-col">
+  <section class="block">
+    <h2>报名记录</h2>
+    {% if regs %}
+    <table class="table">
+      <thead><tr><th>活动</th><th>状态</th><th>提交时间</th><th>操作</th></tr></thead>
+      <tbody>
+        {% for r in regs %}
+        <tr>
+          <td>
+            {% set a = activities.get(r.activity_id) %}
+            {% if a %}<a href="{{ url_for('activity_detail', activity_id=r.activity_id) }}">{{ a.title }}</a>{% else %}活动 #{{ r.activity_id }}{% endif %}
+          </td>
+          <td><span class="pill {{ r.status.value|lower }}">{{ status_labels[r.status.value] }}</span></td>
+          <td>{{ r.created_at|dt }}</td>
+          <td>
+            {% if r.can_cancel() %}
+            <form method="post" action="{{ url_for('cancel', registration_id=r.registration_id) }}">
+              <button class="btn tiny ghost" type="submit">取消报名</button>
+            </form>
+            {% else %}
+            <span class="muted">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="empty">还没有报名记录，去<a href="{{ url_for('index') }}">活动列表</a>看看吧。</p>
+    {% endif %}
+  </section>
+
+  <section class="block">
+    <div class="block-head">
+      <h2>站内消息</h2>
+      {% if messages %}
+      <form method="post" action="{{ url_for('read_messages') }}">
+        <button class="btn tiny ghost" type="submit">全部标记已读</button>
+      </form>
+      {% endif %}
+    </div>
+    {% if messages %}
+    <ul class="msg-list">
+      {% for m in messages %}
+      <li class="{{ 'unread' if not m.is_read }}">
+        <p>{{ m.content }}</p>
+        <time>{{ m.created_at|dt }}</time>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="empty">暂无消息。报名、审批结果都会在这里通知你。</p>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}活动列表 · CampusEvent{% endblock %}
+{% block content %}
+<section class="page-head">
+  <h1>活动列表</h1>
+  <form class="search" method="get" action="{{ url_for('index') }}">
+    <input type="search" name="q" value="{{ q }}" placeholder="按活动名称筛选，如“竞赛”">
+    <button class="btn" type="submit">筛选</button>
+    {% if q %}<a class="link" href="{{ url_for('index') }}">清除</a>{% endif %}
+  </form>
+</section>
+
+{% if rows %}
+<div class="cards">
+  {% for activity, stats in rows %}
+  <article class="card">
+    <div class="card-top">
+      <span class="tag">{{ activity.category }}</span>
+      <span class="tag soft">{{ policy_labels[activity.policy_type.value] }}</span>
+    </div>
+    <h2><a href="{{ url_for('activity_detail', activity_id=activity.activity_id) }}">{{ activity.title }}</a></h2>
+    <p class="meta">{{ activity.start_at|dt }} · {{ activity.location }}</p>
+    <div class="counts">
+      <span class="num">{{ stats.approval }}<small>/{{ stats.capacity }} 已通过</small></span>
+      <span class="num">{{ stats.pending }}<small> 待审核</small></span>
+      <span class="num {{ 'warn' if stats.remaining == 0 }}">{{ stats.remaining }}<small> 剩余名额</small></span>
+    </div>
+    <div class="card-actions">
+      {% set mine = my_active.get(activity.activity_id) %}
+      {% if mine %}
+        <span class="pill {{ mine.status.value|lower }}">{{ status_labels[mine.status.value] }}</span>
+        <a class="btn ghost" href="{{ url_for('activity_detail', activity_id=activity.activity_id) }}">查看</a>
+      {% elif not activity.is_open() %}
+        <span class="pill muted">已开始，停止报名</span>
+      {% else %}
+        <form method="post" action="{{ url_for('register', activity_id=activity.activity_id) }}">
+          <button class="btn primary" type="submit">我要报名</button>
+        </form>
+      {% endif %}
+    </div>
+  </article>
+  {% endfor %}
+</div>
+{% else %}
+<p class="empty">没有符合条件的活动。</p>
+{% endif %}
+{% endblock %}

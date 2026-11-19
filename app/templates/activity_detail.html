@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}{{ activity.title }} · CampusEvent{% endblock %}
+{% block content %}
+<p class="crumb"><a href="{{ url_for('index') }}">活动列表</a> / 活动详情</p>
+
+<section class="detail">
+  <div class="detail-main">
+    <div class="card-top">
+      <span class="tag">{{ activity.category }}</span>
+      <span class="tag soft">{{ policy_labels[activity.policy_type.value] }}</span>
+    </div>
+    <h1>{{ activity.title }}</h1>
+    <dl class="facts">
+      <div><dt>开始时间</dt><dd>{{ activity.start_at|dt }}</dd></div>
+      <div><dt>活动地点</dt><dd>{{ activity.location }}</dd></div>
+      <div><dt>报名方式</dt><dd>{{ policy_labels[activity.policy_type.value] }}</dd></div>
+      <div><dt>人数上限</dt><dd>{{ stats.capacity }} 人</dd></div>
+    </dl>
+  </div>
+  <aside class="detail-side">
+    <div class="stat-block">
+      <div><span>{{ stats.approval }}</span><small>已通过</small></div>
+      <div><span>{{ stats.pending }}</span><small>待审核</small></div>
+      <div><span class="{{ 'warn' if stats.remaining == 0 }}">{{ stats.remaining }}</span><small>剩余名额</small></div>
+    </div>
+    {% if active %}
+      <p class="hint">你当前的报名状态：<strong>{{ status_labels[active.status.value] }}</strong></p>
+      <form method="post" action="{{ url_for('cancel', registration_id=active.registration_id) }}">
+        <button class="btn ghost wide" type="submit">取消报名</button>
+      </form>
+    {% elif not activity.is_open() %}
+      <p class="hint muted">活动已开始，停止报名。</p>
+    {% elif stats.remaining == 0 and activity.policy_type.value == 'DIRECT' %}
+      <p class="hint warn-text">名额已满，暂时无法报名。</p>
+    {% else %}
+      <form method="post" action="{{ url_for('register', activity_id=activity.activity_id) }}">
+        <button class="btn primary wide" type="submit">我要报名</button>
+      </form>
+      <p class="hint">报名规则：{{ policy_labels[activity.policy_type.value] }}</p>
+    {% endif %}
+  </aside>
+</section>
+
+<section class="block">
+  <h2>我的报名记录</h2>
+  {% if my_regs %}
+  <table class="table">
+    <thead><tr><th>记录号</th><th>状态</th><th>提交时间</th><th>最后更新</th></tr></thead>
+    <tbody>
+      {% for r in my_regs %}
+      <tr>
+        <td>#{{ r.registration_id }}</td>
+        <td><span class="pill {{ r.status.value|lower }}">{{ status_labels[r.status.value] }}</span></td>
+        <td>{{ r.created_at|dt }}</td>
+        <td>{{ r.updated_at|dt }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">你还没有报名该活动。</p>
+  {% endif %}
+</section>
+{% endblock %}
