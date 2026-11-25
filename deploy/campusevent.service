@@ -1,0 +1,13 @@
+[Unit]
+Description=CampusEvent Flask service
+After=network.target
+
+[Service]
+WorkingDirectory=/opt/CampusEvents
+Environment="PATH=/opt/CampusEvents/venv/bin"
+ExecStart=/opt/CampusEvents/venv/bin/gunicorn -w 2 -b 127.0.0.1:8000 "app.web:create_app()"
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
