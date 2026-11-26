@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}邮件记录 · CampusEvent{% endblock %}
+{% block content %}
+<section class="page-head">
+  <h1>模拟邮件发件箱</h1>
+  <span class="muted">CR-02：报名通过 / 审核通过 / 审核拒绝 各发一封模拟邮件；失败会留痕但不回滚报名</span>
+</section>
+
+<section class="block">
+  <h2>发送统计</h2>
+  <p class="muted">共 {{ total }} 封：成功 {{ sent }} 封，失败 {{ failed }} 封。</p>
+</section>
+
+<section class="block">
+  <h2>邮件列表</h2>
+  <table class="table">
+    <thead>
+      <tr><th>#</th><th>事件</th><th>收件人</th><th>主题</th><th>正文</th><th>状态</th><th>说明</th><th>时间</th></tr>
+    </thead>
+    <tbody>
+      {% for m in emails %}
+      <tr>
+        <td>{{ m.email_id }}</td>
+        <td><code>{{ m.event_id }}</code></td>
+        <td>{{ m.recipient }}</td>
+        <td>{{ m.subject }}</td>
+        <td>{{ m.body }}</td>
+        <td>
+          {% if m.status == 'sent' %}<span class="tag ok">已发送</span>
+          {% else %}<span class="tag danger">失败</span>{% endif %}
+        </td>
+        <td class="muted">{{ m.detail }}</td>
+        <td>{{ m.created_at }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8" class="muted">暂无邮件记录</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="block">
+  <h2>通知失败记录</h2>
+  <table class="table">
+    <thead><tr><th>#</th><th>事件</th><th>渠道</th><th>错误</th><th>时间</th></tr></thead>
+    <tbody>
+      {% for f in failures %}
+      <tr><td>{{ f.failure_id }}</td><td><code>{{ f.event_id }}</code></td><td>{{ f.channel }}</td><td class="muted">{{ f.detail }}</td><td>{{ f.created_at }}</td></tr>
+      {% else %}
+      <tr><td colspan="5" class="muted">暂无失败记录</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

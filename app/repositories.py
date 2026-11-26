@@ -12,7 +12,8 @@ from .domain.entities import Activity, Message, PolicyType, Registration, Regist
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS students (
     student_id TEXT PRIMARY KEY,
-    name TEXT NOT NULL
+    name TEXT NOT NULL,
+    grade INTEGER NOT NULL DEFAULT 1
 );
 
 CREATE TABLE IF NOT EXISTS activities (
@@ -59,6 +60,18 @@ CREATE TABLE IF NOT EXISTS notification_failures (
     detail TEXT NOT NULL,
     created_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS email_outbox (
+    email_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id TEXT NOT NULL,
+    recipient TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    body TEXT NOT NULL,
+    status TEXT NOT NULL,
+    detail TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_email_event ON email_outbox(event_id);
 """
 
 
@@ -72,16 +85,30 @@ def connect(db_path: str | Path) -> sqlite3.Connection:
 
 def init_schema(conn: sqlite3.Connection) -> None:
     conn.executescript(SCHEMA)
+    _migrate(conn)
+    conn.commit()
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    """轻量迁移：老库补字段，避免变更版要求重建数据库。"""
+    cols = {row["name"] for row in conn.execute("PRAGMA table_info(students)").fetchall()}
+    if "grade" not in cols:
+        conn.execute("ALTER TABLE students ADD COLUMN grade INTEGER NOT NULL DEFAULT 1")
     conn.commit()
 
 
 def seed_demo(conn: sqlite3.Connection) -> None:
     """固定演示账号与示例活动。"""
-    students = [("S001", "张小明"), ("S002", "李小红"), ("S003", "王小雨")]
-    for student_id, name in students:
+    students = [
+        ("S001", "张小明", 2),
+        ("S002", "李小红", 3),
+        ("S003", "王小雨", 1),
+        ("S004", "陈大四", 4),
+    ]
+    for student_id, name, grade in students:
         conn.execute(
-            "INSERT OR IGNORE INTO students (student_id, name) VALUES (?, ?)",
-            (student_id, name),
+            "INSERT OR IGNORE INTO students (student_id, name, grade) VALUES (?, ?, ?)",
+            (student_id, name, grade),
         )
     if conn.execute("SELECT COUNT(*) FROM activities").fetchone()[0] == 0:
         now = datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -96,6 +123,14 @@ def seed_demo(conn: sqlite3.Connection) -> None:
                 "VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (*row, now),
             )
+    # CR-01 演示用：年级限定活动，始终确保存在一条
+    if conn.execute("SELECT COUNT(*) FROM activities WHERE policy_type = 'GRADE_LIMITED'").fetchone()[0] == 0:
+        conn.execute(
+            "INSERT INTO activities (title, category, start_at, location, capacity, policy_type, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            ("大二大三专属：实验室开放日", "实践", "2026-12-26 15:00", "工程训练中心 B102", 20, "GRADE_LIMITED",
+             datetime.now().strftime("%Y-%m-%d %H:%M")),
+        )
     conn.commit()
 
 
@@ -112,13 +147,17 @@ class StudentRepository:
 
     def get(self, student_id: str) -> Student | None:
         row = self.conn.execute(
-            "SELECT student_id, name FROM students WHERE student_id = ?", (student_id,)
+            "SELECT student_id, name, grade FROM students WHERE student_id = ?", (student_id,)
         ).fetchone()
-        return Student(row["student_id"], row["name"]) if row else None
+        return Student(row["student_id"], row["name"], row["grade"]) if row else None
 
     def list_all(self) -> list[Student]:
-        rows = self.conn.execute("SELECT student_id, name FROM students ORDER BY student_id").fetchall()
-        return [Student(r["student_id"], r["name"]) for r in rows]
+        rows = self.conn.execute("SELECT student_id, name, grade FROM students ORDER BY student_id").fetchall()
+        return [Student(r["student_id"], r["name"], r["grade"]) for r in rows]
+
+    def set_grade(self, student_id: str, grade: int) -> None:
+        self.conn.execute("UPDATE students SET grade = ? WHERE student_id = ?", (grade, student_id))
+        self.conn.commit()
 
 
 class ActivityRepository:
@@ -307,3 +346,34 @@ class NotificationFailureRepository:
     def list_all(self) -> list[dict]:
         rows = self.conn.execute("SELECT * FROM notification_failures ORDER BY failure_id").fetchall()
         return [dict(r) for r in rows]
+
+
+class EmailRepository:
+    """CR-02：模拟邮件发件箱，记录收件人、主题、内容、状态与时间。"""
+
+    def __init__(self, conn): self.conn = conn
+
+    def add(self, event_id, recipient, subject, body, status, detail, now) -> int:
+        cur = self.conn.execute(
+            "INSERT INTO email_outbox (event_id, recipient, subject, body, status, detail, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (event_id, recipient, subject, body, status, detail[:500], _fmt(now)),
+        )
+        self.conn.commit()
+        return cur.lastrowid
+
+    def list_all(self) -> list[dict]:
+        rows = self.conn.execute("SELECT * FROM email_outbox ORDER BY email_id DESC").fetchall()
+        return [dict(r) for r in rows]
+
+    def count(self, status: str | None = None) -> int:
+        if status is None:
+            return self.conn.execute("SELECT COUNT(*) FROM email_outbox").fetchone()[0]
+        return self.conn.execute(
+            "SELECT COUNT(*) FROM email_outbox WHERE status = ?", (status,)
+        ).fetchone()[0]
+
+    def count_by_event(self, event_id: str) -> int:
+        return self.conn.execute(
+            "SELECT COUNT(*) FROM email_outbox WHERE event_id = ?", (event_id,)
+        ).fetchone()[0]

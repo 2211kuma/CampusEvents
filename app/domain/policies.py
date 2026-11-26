@@ -12,14 +12,15 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
-from .entities import Activity, PolicyType, RegistrationStatus
-from .errors import CapacityExceededError
+from .entities import Activity, PolicyType, RegistrationStatus, Student
+from .errors import CapacityExceededError, GradeNotAllowedError
 
 
 @dataclass(frozen=True)
 class PolicyContext:
     activity: Activity
     approved_count: int
+    student: Student | None = None
 
 
 class CapacityRule:
@@ -66,12 +67,38 @@ class AuditRegistrationPolicy(RegistrationPolicy):
         return RegistrationStatus.PENDING
 
 
+class GradeLimitedRegistrationPolicy(RegistrationPolicy):
+    """CR-01：年级限定直接报名，仅大二、大三可报名，其余年级明确拒绝。
+
+    名额、活动时间与重复报名仍由公共规则/服务把控，本策略只追加年级条件。
+    """
+
+    policy_type = PolicyType.GRADE_LIMITED
+    allowed_grades = (2, 3)
+
+    def decide(self, ctx: PolicyContext) -> RegistrationStatus:
+        student = ctx.student
+        if student is None:
+            raise GradeNotAllowedError('缺少学生信息，无法校验年级')
+        if student.grade not in self.allowed_grades:
+            raise GradeNotAllowedError(
+                f'活动《{ctx.activity.title}》仅限大二、大三学生报名，'
+                f'你当前为{student.grade_label}（年级 {student.grade}）'
+            )
+        CapacityRule.ensure_room(ctx.activity, ctx.approved_count)
+        return RegistrationStatus.APPROVED
+
+
 class PolicyRegistry:
     """策略注册表，业务层通过它取得策略，而不是写 if/elif。"""
 
     def __init__(self):
         self._policies: dict[PolicyType, RegistrationPolicy] = {}
-        for policy in (DirectRegistrationPolicy(), AuditRegistrationPolicy()):
+        for policy in (
+            DirectRegistrationPolicy(),
+            AuditRegistrationPolicy(),
+            GradeLimitedRegistrationPolicy(),
+        ):
             self.register(policy)
 
     def register(self, policy: RegistrationPolicy) -> None:

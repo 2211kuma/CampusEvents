@@ -15,12 +15,13 @@
       <a href="{{ url_for('me') }}" class="{{ 'on' if request.endpoint == 'me' }}">我的报名</a>
       <a href="{{ url_for('admin_activities') }}" class="{{ 'on' if request.endpoint == 'admin_activities' }}">活动管理</a>
       <a href="{{ url_for('admin_approvals') }}" class="{{ 'on' if request.endpoint == 'admin_approvals' }}">审批台</a>
+      <a href="{{ url_for('admin_emails') }}" class="{{ 'on' if request.endpoint == 'admin_emails' }}">邮件记录</a>
     </nav>
     <form class="who" method="get" action="{{ url_for('switch_student', student_id='__ID__') }}" onsubmit="return false;">
       <label for="switcher">演示账号</label>
       <select id="switcher" onchange="location.href='{{ url_for('switch_student', student_id='__ID__') }}'.replace('__ID__', this.value)">
         {% for s in students %}
-        <option value="{{ s.student_id }}" {{ 'selected' if s.student_id == current_student_id }}>{{ s.name }}（{{ s.student_id }}）</option>
+        <option value="{{ s.student_id }}" {{ 'selected' if s.student_id == current_student_id }}>{{ s.name }} · {{ s.grade_label }}（{{ s.student_id }}）</option>
         {% endfor %}
       </select>
     </form>
@@ -41,7 +42,7 @@
 </div>
 
 <footer class="foot">
-  <div class="wrap">CampusEvent · 软件工程实验二 · 初始版本 baseline-v1</div>
+  <div class="wrap">CampusEvent · 软件工程实验二 · 变更版本 change-v2（CR-01 年级限定 / CR-02 模拟邮件）</div>
 </footer>
 </body>
 </html>

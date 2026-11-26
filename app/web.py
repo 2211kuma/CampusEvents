@@ -172,4 +172,16 @@ def create_app(db_path: str | Path | None = None) -> Flask:
             flash("未知的审批操作", "error")
         return redirect(url_for("admin_approvals"))
 
+    @app.get("/admin/emails")
+    def admin_emails():
+        emails = services.emails.list_all()
+        return render_template(
+            "admin_emails.html",
+            emails=emails,
+            total=len(emails),
+            sent=services.emails.count("sent"),
+            failed=services.emails.count("failed"),
+            failures=services.failures.list_all(),
+        )
+
     return app

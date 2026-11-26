@@ -30,3 +30,7 @@ class InvalidStateError(DomainError):
 
 class ForbiddenOperationError(DomainError):
     default_message = "无权执行此操作"
+
+
+class GradeNotAllowedError(DomainError):
+    default_message = "该活动仅限大二、大三学生报名"

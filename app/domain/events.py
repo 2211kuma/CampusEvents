@@ -44,7 +44,8 @@ class EventBus:
                 failures.append(detail)
                 if self._failure_recorder is not None:
                     try:
-                        self._failure_recorder(event, type(handler).__name__ if hasattr(handler, "__class__") else "handler", detail)
+                        channel = getattr(handler, "channel", None) or type(handler).__name__
+                        self._failure_recorder(event, channel, detail)
                     except Exception:  # noqa: BLE001 - 留痕失败也不能影响主流程
                         pass
         return failures

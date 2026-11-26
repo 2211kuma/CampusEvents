@@ -16,10 +16,11 @@ from .domain.errors import (
     NotFoundError,
 )
 from .domain.events import EventBus, RegistrationEvent
-from .domain.notifications import InAppNotificationObserver
+from .domain.notifications import InAppNotificationObserver, EmailNotificationObserver, MockEmailSender
 from .domain.policies import CapacityRule, PolicyContext, PolicyRegistry
 from .repositories import (
     ActivityRepository,
+    EmailRepository,
     MessageRepository,
     NotificationFailureRepository,
     ProcessedEventRepository,
@@ -139,7 +140,9 @@ class RegistrationService:
 
         policy = self.registry.get(activity.policy_type)
         approved = self.registrations.count_status(activity_id, RegistrationStatus.APPROVED)
-        status = policy.decide(PolicyContext(activity=activity, approved_count=approved))
+        status = policy.decide(
+            PolicyContext(activity=activity, approved_count=approved, student=student)
+        )
 
         registration = self.registrations.add(activity_id, student.student_id, status)
         self._publish(registration, activity, "submitted", now)
@@ -217,21 +220,28 @@ class Services:
     messages: MessageRepository
     students: StudentRepository
     failures: NotificationFailureRepository
+    emails: EmailRepository
 
 
-def build_services(conn) -> Services:
+def build_services(conn, email_sender=None) -> Services:
     student_repo = StudentRepository(conn)
     activity_repo = ActivityRepository(conn)
     registration_repo = RegistrationRepository(conn)
     message_repo = MessageRepository(conn)
     processed_repo = ProcessedEventRepository(conn)
     failure_repo = NotificationFailureRepository(conn)
+    email_repo = EmailRepository(conn)
 
     def record_failure(event, channel, detail):
         failure_repo.add(event.event_id, channel, detail, datetime.now())
 
     bus = EventBus(failure_recorder=record_failure)
     bus.subscribe(InAppNotificationObserver(message_repo, processed_repo))
+    bus.subscribe(
+        EmailNotificationObserver(
+            email_repo, processed_repo, email_sender or MockEmailSender(), student_repo
+        )
+    )
 
     return Services(
         activities=ActivityService(activity_repo, registration_repo),
@@ -239,4 +249,5 @@ def build_services(conn) -> Services:
         messages=message_repo,
         students=student_repo,
         failures=failure_repo,
+        emails=email_repo,
     )

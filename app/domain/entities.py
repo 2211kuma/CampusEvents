@@ -28,18 +28,31 @@ class RegistrationStatus(str, Enum):
 
 
 class PolicyType(str, Enum):
-    DIRECT = "DIRECT"      # 直接报名
-    AUDIT = "AUDIT"        # 管理员审核
+    DIRECT = "DIRECT"                # 直接报名
+    AUDIT = "AUDIT"                  # 管理员审核
+    GRADE_LIMITED = "GRADE_LIMITED"  # 年级限定直接报名（CR-01）
 
     @property
     def label(self) -> str:
-        return {"DIRECT": "直接报名", "AUDIT": "需管理员审核"}[self.value]
+        return {
+            "DIRECT": "直接报名",
+            "AUDIT": "需管理员审核",
+            "GRADE_LIMITED": "年级限定直接报名（大二、大三）",
+        }[self.value]
+
+
+GRADE_NAMES = {1: "大一", 2: "大二", 3: "大三", 4: "大四"}
 
 
 @dataclass
 class Student:
     student_id: str
     name: str
+    grade: int = 1
+
+    @property
+    def grade_label(self) -> str:
+        return GRADE_NAMES.get(self.grade, f"{self.grade}年级")
 
 
 @dataclass

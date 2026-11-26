@@ -38,3 +38,21 @@
 ## 待办（下一版本 change-v2）
 
 - 等待教师 CR；收到后先写影响分析（涉及类、风险、新增测试、预计改动范围），再从 baseline-v1 拉分支实现。
+
+## 轮次 6｜变更影响分析（CR-01 / CR-02）
+
+- 输入：教师变更单全文（`docs/cr_read.txt`）。
+- 产出：`docs/变更影响分析-CR01-CR02.md`，先分析后编码，含涉及类、风险与应对、新增测试、可维护性指标（新增类 5、核心类改动 7、回归失败 0、耗时约 1.5 小时）。
+- 判断：两项均为扩展式改动，不动 `CapacityRule`、不改既有策略逻辑、不重写服务层。
+
+## 轮次 7｜实现 change-v2
+
+- CR-01：新增 `GRADE_LIMITED` 策略类型与 `GradeLimitedRegistrationPolicy`，`PolicyContext` 增可选 `student`；`students` 表加 `grade` 并通过 `_migrate()` 增量补列，老库免重建；`RegistrationService.register` 仅多传一行上下文。
+- CR-02：新增 `EmailRepository` / `MockEmailSender` / `EmailNotificationObserver`；幂等键改为 `事件:渠道`，两渠道互不吞事件；`EventBus` 失败留痕改用订阅者 `channel`；新增 `/admin/emails` 页面。
+- 分歧与取舍：AI 建议把年级判断直接写进 `register()` 的 if 分支，否决——违反策略模式约束，且与 CR-01“新增独立策略”要求直接冲突；改为策略内先校验年级、再校验名额，提示按最直接原因给出。
+- 回归：`pytest -q` 27 passed（15 条原用例 + 8 条 CR 用例 + 2 条扩展 + 页面冒烟），失败 0。
+
+## 轮次 8｜变更版部署
+
+- 服务器 `git pull` 后重启 `campusevent` 服务，现网库自动迁移（补 `grade` 列、建 `email_outbox`），公网复查页面与邮件记录页均 200。
+
