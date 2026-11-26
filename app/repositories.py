@@ -106,8 +106,10 @@ def seed_demo(conn: sqlite3.Connection) -> None:
         ("S004", "陈大四", 4),
     ]
     for student_id, name, grade in students:
+        # 演示账号以代码为准：老库升级时同步校正年级，避免 CR-01 演示口径不一致
         conn.execute(
-            "INSERT OR IGNORE INTO students (student_id, name, grade) VALUES (?, ?, ?)",
+            "INSERT INTO students (student_id, name, grade) VALUES (?, ?, ?) "
+            "ON CONFLICT(student_id) DO UPDATE SET name = excluded.name, grade = excluded.grade",
             (student_id, name, grade),
         )
     if conn.execute("SELECT COUNT(*) FROM activities").fetchone()[0] == 0:
